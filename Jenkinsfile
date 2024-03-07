@@ -12,6 +12,7 @@ pipeline {
         DOCKER_PASS = 'dockerhub'
         IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
         IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+	JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
     }
     stages {
         stage('clean workspace') {
@@ -49,7 +50,7 @@ pipeline {
                 sh "trivy fs . > trivyfs.txt"
              }
          }
-        stage("Build & Push Docker Image") {
+	 stage("Build & Push Docker Image") {
              steps {
                  script {
                      docker.withRegistry('',DOCKER_PASS) {
@@ -62,14 +63,14 @@ pipeline {
                  }
              }
          }
-        stage("Trivy Image Scan") {
+	 stage("Trivy Image Scan") {
              steps {
                  script {
 	              sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image kalyan555/reddit-clone-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table > trivyimage.txt')
                  }
              }
          }
-        stage ('Cleanup Artifacts') {
+	 stage ('Cleanup Artifacts') {
              steps {
                  script {
                       sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
@@ -77,16 +78,17 @@ pipeline {
                  }
              }
          }
-	post {
-           always {
-               emailext attachLog: true,
-                   subject: "'${currentBuild.result}'",
-                   body: "Project: ${env.JOB_NAME}<br/>" +
-                       "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                       "URL: ${env.BUILD_URL}<br/>",
-                   to: 'gopalampavan555@gmail.com',                              
-                   attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
-           }
-	}
      }
+     post {
+        always {
+           emailext attachLog: true,
+               subject: "'${currentBuild.result}'",
+               body: "Project: ${env.JOB_NAME}<br/>" +
+                   "Build Number: ${env.BUILD_NUMBER}<br/>" +
+                   "URL: ${env.BUILD_URL}<br/>",
+               to: 'gopalampavan555@gmail.com',                              
+               attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+        }
+     }
+    
 }
